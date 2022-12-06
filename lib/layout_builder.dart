@@ -2,152 +2,113 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// Flutter code sample for [AnimatedBuilder].
+
 import 'package:flutter/material.dart';
 
-void main() => runApp(const AnimatedBuilderExample());
+void main() => runApp(const LayoutBuilderExample());
 
-/// This widget listens for changes in the focus state of the subtree defined by
-/// its [child] widget, changing the border and color of the container it is in
-/// when it has focus.
+/// This displays a row of icon buttons, and if the row is too narrow to display
+/// all of them, it moves any that don't fit into an overflow menu.
 ///
-/// A [FocusListenerContainer] swaps out the [BorderSide] of a border around the
-/// child widget with [focusedSide] when a widget that is a descendant of this
-/// widget has focus.
-class FocusListenerContainer extends StatefulWidget {
-  const FocusListenerContainer({
+/// This widget is a [PreferredSizeWidget], so it can be used as a
+/// [Scaffold.appBar].
+class IconButtonBar extends StatelessWidget with PreferredSizeWidget {
+  const IconButtonBar({
     super.key,
-    this.border = const RoundedRectangleBorder(),
-    this.focusedSide,
-    required this.child,
+    required this.childSize,
+    required this.children,
   });
 
-  /// This is the border that will be used when not focused, and which defines
-  /// all the attributes except for the [OutlinedBorder.side] when focused.
-  final OutlinedBorder border;
+  /// The fixed width for each of the children.
+  final Size childSize;
 
-  /// This is the [BorderSide] that will be used for [border] when the [child]
-  /// subtree is focused.
-  final BorderSide? focusedSide;
-
-  /// This is defines the subtree to listen to for focus changes.
-  final Widget child;
-
-  @override
-  State<FocusListenerContainer> createState() => _FocusListenerContainerState();
-}
-
-class _FocusListenerContainerState extends State<FocusListenerContainer> {
-  final FocusNode _focusNode = FocusNode();
+  /// The list of widgets (typically [IconButton]s) to display.
+  ///
+  /// They should each be able to be displayed at [childSize]. They will
+  /// automatically be placed inside of a [SizedBox] that is [childSize] in
+  /// size.
+  final List<Widget> children;
 
   @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
+  Size get preferredSize => Size(childSize.width * children.length, childSize.height);
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _focusNode,
-      child: Focus(
-        focusNode: _focusNode,
-        skipTraversal: true,
-        canRequestFocus: false,
-        child: widget.child,
-      ),
-      builder: (BuildContext context, Widget? child) {
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: ShapeDecoration(
-            shape: widget.border.copyWith(
-              side: _focusNode.hasFocus ? widget.focusedSide : null,
-            ),
-          ),
-          child: child,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        int visibleChildren = constraints.constrain(preferredSize).width ~/ childSize.width;
+        visibleChildren = (visibleChildren < children.length) ? visibleChildren - 1 : children.length;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            ...children.sublist(0, visibleChildren),
+            if (visibleChildren < children.length)
+              OverflowMenu(children: children.sublist(visibleChildren, children.length)),
+          ].map<Widget>((Widget child) => SizedBox.fromSize(size: childSize, child: child)).toList(),
         );
       },
     );
   }
 }
 
-class MyField extends StatefulWidget {
-  const MyField({super.key, required this.label});
+class OverflowMenu extends StatelessWidget {
+  const OverflowMenu({
+    super.key,
+    required this.children,
+    this.icon,
+  });
 
-  final String label;
-
-  @override
-  State<MyField> createState() => _MyFieldState();
-}
-
-class _MyFieldState extends State<MyField> {
-  final TextEditingController controller = TextEditingController();
+  final List<Widget> children;
+  final Widget? icon;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Expanded(child: Text(widget.label)),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            controller: controller,
-            onEditingComplete: () {
-              debugPrint('Field ${widget.label} changed to ${controller.value}');
-            },
-          ),
-        ),
-      ],
+    return MenuAnchor(
+      style: const MenuStyle(alignment: AlignmentDirectional.bottomStart),
+      builder: (context, controller, child) {
+        return IconButton(
+          icon: icon ?? const Icon(Icons.more_vert),
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+        );
+      },
+      menuChildren: children,
     );
   }
 }
 
-class AnimatedBuilderExample extends StatelessWidget {
-  const AnimatedBuilderExample({super.key});
+class LayoutBuilderExample extends StatelessWidget {
+  const LayoutBuilderExample({ super.key });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar: AppBar(title: const Text('AnimatedBuilder Example')),
-        body: Center(
-          child: SizedBox(
-            width: 300,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: MyField(label: 'Company'),
-                  ),
-                  FocusListenerContainer(
-                    border: const RoundedRectangleBorder(
-                      side: BorderSide(
-                        strokeAlign: BorderSide.strokeAlignOutside,
-                      ),
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(5),
-                      ),
-                    ),
-                    // The border side will get wider when the subtree has focus.
-                    focusedSide: const BorderSide(
-                      width: 4,
-                      strokeAlign: BorderSide.strokeAlignOutside,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const <Widget>[
-                        Text('Owner:'),
-                        MyField(label: 'First Name'),
-                        MyField(label: 'Last Name'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        appBar: IconButtonBar(
+          childSize: const Size(48, 48),
+          children: [
+            IconButton(onPressed: () {}, icon: const Icon(Icons.call)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.calendar_month)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.hotel)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.car_rental)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.airplanemode_on)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.train)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.rocket)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.alarm_add)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.alarm_off)),
+          ],
+        ),
+        body: const Center(
+          child: AspectRatio(
+            aspectRatio: 1.0,
+            child: FlutterLogo(),
           ),
         ),
       ),
