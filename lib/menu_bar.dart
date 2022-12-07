@@ -4,7 +4,9 @@
 
 /// Flutter code sample for [AnimatedBuilder].
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() => runApp(const MenuBarExample());
 
@@ -12,51 +14,40 @@ class ApplicationMenu extends StatelessWidget with PreferredSizeWidget {
   const ApplicationMenu({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Expanded(
-              child: MenuBar(
-                children: <Widget>[
-                  SubmenuButton(
-                    menuChildren: [
-                      MenuItemButton(
-                        onPressed: () {
-                          showAboutDialog(context: context);
-                        },
-                        child: const MenuAcceleratorLabel("&About"),
-                      ),
-                      const Padding(
-                        padding: EdgeInsetsDirectional.only(start: 8.0),
-                        child: Text('Options:', style: TextStyle(fontStyle: FontStyle.italic)),
-                      ),
-                      MenuItemButton(
-                        onPressed: () {},
-                        child: const MenuAcceleratorLabel("Option &1"),
-                      ),
-                      MenuItemButton(
-                        onPressed: () {},
-                        child: const MenuAcceleratorLabel("Option &2"),
-                      ),
-                    ],
-                    child: const MenuItemButton(
-                      child: MenuAcceleratorLabel("Example &App"),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        )
-      ],
+  Size get preferredSize => const Size(double.infinity, 48);
+
+  void _showAbout(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'Example App',
+      applicationIcon: const FlutterLogo(),
+      applicationVersion: '1.0.0',
     );
   }
 
   @override
-  Size get preferredSize => const Size(double.infinity, 48);
+  Widget build(BuildContext context) {
+    return MenuBar(
+      children: <Widget>[
+        SubmenuButton(
+          menuChildren: <Widget>[
+            MenuItemButton(
+              onPressed: () => _showAbout(context),
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyA, meta: true),
+              child: const MenuAcceleratorLabel("&About"),
+            ),
+            const Divider(),
+            MenuItemButton(
+              onPressed: () => exit(0),
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+              child: const MenuAcceleratorLabel('&Quit'),
+            ),
+          ],
+          child: const MenuAcceleratorLabel("&Example App"),
+        ),
+      ],
+    );
+  }
 }
 
 class MenuBarExample extends StatelessWidget {
@@ -64,9 +55,10 @@ class MenuBarExample extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
+      theme: ThemeData.light().copyWith(visualDensity: VisualDensity.compact),
+      home: const Scaffold(
         appBar: ApplicationMenu(),
         body: Center(
           child: AspectRatio(
